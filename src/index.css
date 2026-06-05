@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #F8F6F1;
+  --bg-soft: #FCFAF6;
+  --bg-deep: #F3EFE7;
+
+  --ink-main: #11100E;
+  --ink-graphite: #2D2A26;
+  --ink-muted: #7E786F;
+  --ink-faint: #B8B0A4;
+  --ink-ghost: #D8D1C4;
+
+  --line-soft: #E4DDD2;
+  --line-faint: #EFE8DD;
+  --line-hair: #F2ECE0;
+
+  --accent-gold: #B79A6B;
+  --accent-dot: #C8B18B;
+  --accent-sand: #E8DCC2;
+  --accent-warn: #A37148;
+
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-main);
+  color: var(--ink-main);
+  font-family:
+    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11", "tnum";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(183, 154, 107, 0.28);
+  color: var(--ink-main);
+}
+
+.filmstrip-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-ghost) transparent;
+}
+.filmstrip-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.filmstrip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.filmstrip-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-ghost);
+  border-radius: 9999px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.grain-bg {
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(rgba(45, 42, 38, 0.022) 1px, transparent 1px),
+    radial-gradient(rgba(45, 42, 38, 0.012) 1px, transparent 1px);
+  background-size: 28px 28px, 56px 56px;
+  background-position: 0 0, 14px 14px;
+}
