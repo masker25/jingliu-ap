@@ -8,6 +8,7 @@
 import type { paths } from "@ct/shared-types/api.d.ts";
 
 import * as local from "./localApi";
+import type { Report } from "./responsibility";
 
 const BASE = "/api"; // Vite proxies /api -> http://localhost:8000
 const DEMO = import.meta.env.VITE_DEMO === "1";
@@ -79,6 +80,20 @@ export async function patchChecklist(itemId: string, checked: boolean): Promise<
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ checked }),
   });
+}
+
+export async function getReport(documentId: string): Promise<Report> {
+  if (DEMO) return local.getReport(documentId);
+  throw new Error("责任报告引擎暂仅在 demo 构建中可用（后端真实引擎待接入 key）");
+}
+
+export async function saveReport(
+  documentId: string,
+  report: Report,
+  action?: string,
+  title?: string,
+): Promise<void> {
+  if (DEMO) return local.saveReport(documentId, report, action, title);
 }
 
 export async function getActivity(documentId: string): Promise<Activity[]> {

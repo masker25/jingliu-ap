@@ -19,9 +19,8 @@ function timeOf(iso: string) {
 }
 
 export function RunTimeline({ documentId }: { documentId: string }) {
-  const [open, setOpen] = useState(
-    () => typeof window !== "undefined" && window.innerWidth >= 1024,
-  );
+  // collapsed by default so it never covers the report's 来源回看 panel
+  const [open, setOpen] = useState(false);
   const { data } = useQuery({
     queryKey: ["activity", documentId],
     queryFn: () => getActivity(documentId),

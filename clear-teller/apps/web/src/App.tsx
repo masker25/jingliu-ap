@@ -6,6 +6,7 @@ import { CommandPalette } from "./agent/CommandPalette";
 import { RunTimeline } from "./agent/RunTimeline";
 import { FlowCanvas } from "./canvas/FlowCanvas";
 import { getDocument, getHealth } from "./lib/api";
+import { ReportView } from "./report/ReportView";
 import { Composer } from "./scene/Composer";
 import { DivergentNodes } from "./scene/DivergentNodes";
 import { DocumentList } from "./scene/DocumentList";
@@ -43,11 +44,32 @@ function Brand({ onReset, showReset }: { onReset: () => void; showReset: boolean
 
 const LS_KEY = "ct.documentId";
 
+type View = "report" | "canvas";
+
+function ViewSwitch({ view, setView }: { view: View; setView: (v: View) => void }) {
+  return (
+    <div className="pointer-events-auto absolute left-1/2 top-3 z-40 flex -translate-x-1/2 gap-0.5 rounded-full border border-line bg-surface/90 p-0.5 shadow-card backdrop-blur">
+      {(["report", "canvas"] as View[]).map((v) => (
+        <button
+          key={v}
+          onClick={() => setView(v)}
+          className={`rounded-full px-3 py-1 text-[12px] transition ${
+            view === v ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+          }`}
+        >
+          {v === "report" ? "责任报告" : "画布"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   // remember the open document across reloads so persisted state is restored
   const [documentId, setDocumentIdState] = useState<string | null>(
     () => localStorage.getItem(LS_KEY),
   );
+  const [view, setView] = useState<View>("report");
   const setDocumentId = (id: string | null) => {
     if (id) localStorage.setItem(LS_KEY, id);
     else localStorage.removeItem(LS_KEY);
@@ -75,7 +97,11 @@ export default function App() {
           </div>
         </div>
       ) : doc ? (
-        <FlowCanvas key={doc.id} doc={doc} />
+        view === "report" ? (
+          <ReportView key={`${doc.id}:r`} documentId={doc.id} />
+        ) : (
+          <FlowCanvas key={doc.id} doc={doc} />
+        )
       ) : (
         <div className="dot-grid absolute inset-0 flex items-center justify-center">
           <span className="label">读取结果…</span>
@@ -88,8 +114,9 @@ export default function App() {
         onOpen={openDocument}
         onNew={() => setDocumentId(null)}
       />
+      {documentId && doc && <ViewSwitch view={view} setView={setView} />}
       {documentId && doc && <RunTimeline documentId={documentId} />}
-      {documentId && doc && <AgentDock />}
+      {documentId && doc && view === "canvas" && <AgentDock />}
       <HealthBadge />
       <CommandPalette />
     </div>
