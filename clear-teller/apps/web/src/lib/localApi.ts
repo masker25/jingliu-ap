@@ -3,6 +3,7 @@
 // which mode it runs in.
 
 import { process } from "./demoEngine";
+import { extractReport, type Report } from "./responsibility";
 import type {
   Activity,
   CanvasPositions,
@@ -14,6 +15,7 @@ import type {
 
 const INDEX = "ct.demo.index";
 const docKey = (id: string) => `ct.demo.doc.${id}`;
+const reportKey = (id: string) => `ct.demo.report.${id}`;
 const uid = () => crypto.randomUUID().replace(/-/g, "");
 
 type StoredDoc = DocumentOut & { activity: Activity[]; created_at: string };
@@ -96,11 +98,32 @@ export function ingestText(text: string, title?: string): IngestResponse {
     detail: `清单 ${checklist.length} · 冲突 ${conflicts.length} · 合并 ${mergedIdx.size}`,
   });
   writeDoc(doc);
+  localStorage.setItem(reportKey(id), JSON.stringify(extractReport(text)));
   writeIndex([
     { id, title: title ?? null, status: "ready", created_at: created },
     ...readIndex(),
   ]);
   return { document_id: id, run_id: id };
+}
+
+export function getReport(id: string): Report {
+  const raw = localStorage.getItem(reportKey(id));
+  if (!raw) throw new Error("report not found");
+  return JSON.parse(raw);
+}
+
+export function saveReport(id: string, report: Report, action?: string, title?: string): void {
+  localStorage.setItem(reportKey(id), JSON.stringify(report));
+  if (action) {
+    const doc = readDoc(id);
+    if (doc) {
+      const last = doc.activity[doc.activity.length - 1];
+      // coalesce repeated reordering into one entry
+      if (last && last.action === action) last.time = new Date().toISOString();
+      else logActivity(doc, action, title ?? action);
+      writeDoc(doc);
+    }
+  }
 }
 
 export function streamRun(_runId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
