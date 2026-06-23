@@ -136,7 +136,10 @@ export function saveCanvas(id: string, positions: CanvasPositions): void {
   const doc = readDoc(id);
   if (!doc) return;
   doc.canvas = positions;
-  logActivity(doc, "canvas_update", "调整画布布局");
+  // coalesce consecutive layout tweaks into one entry instead of flooding
+  const last = doc.activity[doc.activity.length - 1];
+  if (last && last.action === "canvas_update") last.time = new Date().toISOString();
+  else logActivity(doc, "canvas_update", "调整画布布局");
   writeDoc(doc);
 }
 

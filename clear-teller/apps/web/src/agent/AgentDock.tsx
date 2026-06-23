@@ -29,7 +29,7 @@ export function AgentDock() {
           const raw = e.dataTransfer.getData(FEED_MIME);
           if (raw) feed(JSON.parse(raw) as ContextChip);
         }}
-        className={`flex flex-col items-stretch gap-2 rounded-2xl border bg-surface/95 p-2 shadow-card backdrop-blur transition
+        className={`flex max-w-[94vw] flex-col items-stretch gap-2 rounded-2xl border bg-surface/95 p-2 shadow-card backdrop-blur transition
           ${over ? "border-accent ring-2 ring-accent/30" : "border-line"}`}
       >
         {fed.length > 0 && (
@@ -50,11 +50,11 @@ export function AgentDock() {
             ))}
           </div>
         )}
-        <button className="flex items-center gap-2.5 rounded-full py-1.5 pl-2 pr-1">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft font-mono text-[12px] text-accent">
+        <button className="flex min-w-0 items-center gap-2.5 rounded-full py-1.5 pl-2 pr-1">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-[12px] text-accent">
             ✦
           </span>
-          <span className="text-[13px] text-ink-soft">
+          <span className="truncate text-[13px] text-ink-soft">
             {over ? "松手投喂给 Agent" : fed.length ? "已带上下文，⌘K 提问" : "问 Agent，或把字段拖到这里"}
           </span>
           <kbd className="rounded-md border border-line bg-paper px-1.5 py-0.5 font-mono text-[11px] text-faint">

@@ -20,7 +20,7 @@ function HealthBadge() {
   const { data, isError } = useQuery({ queryKey: ["health"], queryFn: getHealth });
   const ok = !isError && data?.status === "ok";
   return (
-    <div className="pointer-events-auto absolute bottom-5 left-4 z-40 flex items-center gap-1.5 rounded-full border border-line bg-surface/90 px-3 py-1.5 shadow-card backdrop-blur">
+    <div className="pointer-events-auto absolute bottom-5 left-4 z-40 hidden items-center gap-1.5 rounded-full border border-line bg-surface/90 px-3 py-1.5 shadow-card backdrop-blur sm:flex">
       <span className={`h-1.5 w-1.5 rounded-full ${ok ? "bg-ok" : "bg-faint"}`} />
       <span className="text-[11px] text-ink-soft">backend {ok ? "connected" : "…"}</span>
     </div>
@@ -88,8 +88,8 @@ export default function App() {
         onOpen={openDocument}
         onNew={() => setDocumentId(null)}
       />
-      <RunTimeline documentId={documentId} />
-      <AgentDock />
+      {documentId && doc && <RunTimeline documentId={documentId} />}
+      {documentId && doc && <AgentDock />}
       <HealthBadge />
       <CommandPalette />
     </div>
