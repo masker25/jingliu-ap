@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.uv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Data (SQLite db + uploaded files)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/uploads/
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

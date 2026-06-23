@@ -1,0 +1,49 @@
+# clear teller — task runner. Run `just` to list.
+
+default:
+    @just --list
+
+# --- backend ---
+
+# sync python deps via uv
+sync:
+    cd backend && uv sync
+
+# run the FastAPI dev server
+api:
+    cd backend && uv run uvicorn clear_teller.main:app --reload --port 8000
+
+# create a new alembic migration from model changes
+migration message:
+    cd backend && uv run alembic revision --autogenerate -m "{{message}}"
+
+# apply migrations
+migrate:
+    cd backend && uv run alembic upgrade head
+
+# lint + format python
+lint:
+    cd backend && uv run ruff check . && uv run ruff format .
+
+# --- frontend ---
+
+# install JS deps
+install:
+    pnpm install
+
+# run the vite dev server
+web:
+    pnpm --filter web dev
+
+# generate frontend TS types from the running backend's OpenAPI
+gen-types:
+    pnpm --filter web gen:types
+
+# --- combined ---
+
+# first-time setup
+setup: sync install
+
+# run api + web together (needs two terminals normally; this backgrounds api)
+dev:
+    @echo "Run 'just api' and 'just web' in separate terminals."

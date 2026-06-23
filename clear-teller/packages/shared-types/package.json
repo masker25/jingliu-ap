@@ -1,0 +1,6 @@
+{
+  "name": "@ct/shared-types",
+  "version": "0.0.1",
+  "private": true,
+  "types": "./api.d.ts"
+}
