@@ -23,6 +23,7 @@ from clear_teller.api.schemas import (
     DocumentOut,
     IngestRequest,
     IngestResponse,
+    UnitOut,
 )
 from clear_teller.db import models
 from clear_teller.db.session import get_session, write_session
@@ -132,11 +133,31 @@ def get_document(document_id: str, session: Session = Depends(get_session)) -> D
         if c.left_unit_id in unit_by_id and c.right_unit_id in unit_by_id
     ]
 
+    # which units were promoted (checklist source or a conflict side) — the rest
+    # stay as the faint divergent fragments on the canvas
+    surfaced_ids: set[str] = set()
+    for it in items:
+        surfaced_ids.update(json.loads(it.source_unit_ids or "[]"))
+    for c in conflicts:
+        surfaced_ids.add(c.left_unit_id)
+        surfaced_ids.add(c.right_unit_id)
+    units_out = [
+        UnitOut(
+            id=u.id,
+            text=u.text,
+            provenance=u.provenance,
+            surfaced=u.id in surfaced_ids,
+        )
+        for u in units
+        if u.merged_into_id is None
+    ]
+
     return DocumentOut(
         id=doc.id,
         status=doc.status,
         title=doc.title,
         checklist=checklist,
         conflicts=conflict_out,
+        units=units_out,
         unit_count=len(units),
     )

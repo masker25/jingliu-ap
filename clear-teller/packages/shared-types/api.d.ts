@@ -149,6 +149,8 @@ export interface components {
             checklist: components["schemas"]["ChecklistItemOut"][];
             /** Conflicts */
             conflicts: components["schemas"]["ConflictOut"][];
+            /** Units */
+            units: components["schemas"]["UnitOut"][];
             /** Unit Count */
             unit_count: number;
         };
@@ -170,6 +172,17 @@ export interface components {
             document_id: string;
             /** Run Id */
             run_id: string;
+        };
+        /** UnitOut */
+        UnitOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Provenance */
+            provenance: string | null;
+            /** Surfaced */
+            surfaced: boolean;
         };
         /** ValidationError */
         ValidationError: {

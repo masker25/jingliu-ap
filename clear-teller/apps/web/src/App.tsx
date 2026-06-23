@@ -4,11 +4,10 @@ import { useState } from "react";
 import { AgentDock } from "./agent/AgentDock";
 import { CommandPalette } from "./agent/CommandPalette";
 import { RunTimeline } from "./agent/RunTimeline";
+import { FlowCanvas } from "./canvas/FlowCanvas";
 import { getDocument, getHealth } from "./lib/api";
 import { Composer } from "./scene/Composer";
-import { ConflictCard } from "./scene/ConflictCard";
 import { DivergentNodes } from "./scene/DivergentNodes";
-import { FocalChecklist } from "./scene/FocalChecklist";
 
 // Two states over the divergent dot-grid canvas:
 //  · idle    — the Composer invites a messy blob.
@@ -50,21 +49,21 @@ export default function App() {
   });
 
   return (
-    <div className="dot-grid relative h-full w-full overflow-hidden bg-paper">
-      <DivergentNodes />
-
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-6">
-        {!documentId ? (
-          <Composer onDone={setDocumentId} />
-        ) : doc ? (
-          <>
-            <FocalChecklist items={doc.checklist} />
-            <ConflictCard conflicts={doc.conflicts} />
-          </>
-        ) : (
-          <div className="label">读取结果…</div>
-        )}
-      </div>
+    <div className="relative h-full w-full overflow-hidden bg-paper">
+      {!documentId ? (
+        <div className="dot-grid absolute inset-0">
+          <DivergentNodes />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <Composer onDone={setDocumentId} />
+          </div>
+        </div>
+      ) : doc ? (
+        <FlowCanvas key={doc.id} doc={doc} />
+      ) : (
+        <div className="dot-grid absolute inset-0 flex items-center justify-center">
+          <span className="label">读取结果…</span>
+        </div>
+      )}
 
       <Brand onReset={() => setDocumentId(null)} showReset={!!documentId} />
       <RunTimeline />

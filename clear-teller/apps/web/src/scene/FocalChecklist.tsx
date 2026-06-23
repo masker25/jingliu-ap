@@ -15,7 +15,7 @@ function Row({ item, index }: { item: ChecklistItem; index: number }) {
         <button
           onClick={() => setChecked((v) => !v)}
           aria-pressed={checked}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border font-mono text-[11px] transition
+          className={`nodrag mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border font-mono text-[11px] transition
             ${checked ? "border-ok bg-ok-soft text-ok" : "border-line text-transparent hover:border-accent"}`}
         >
           ✓
@@ -38,7 +38,7 @@ function Row({ item, index }: { item: ChecklistItem; index: number }) {
         {item.source.length > 0 && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="label mt-1 shrink-0 opacity-0 transition group-hover:opacity-100"
+            className="nodrag label mt-1 shrink-0 opacity-0 transition group-hover:opacity-100"
           >
             {open ? "收起" : "原文"}
           </button>

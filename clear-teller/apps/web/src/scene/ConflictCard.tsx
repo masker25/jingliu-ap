@@ -11,7 +11,7 @@ export function ConflictCard({ conflicts }: { conflicts: Conflict[] }) {
         <span className="label !text-warn">⚠ Conflict · 待确认</span>
         <span className="font-mono text-[10px] text-warn">{conflicts.length}</span>
       </header>
-      <div className="max-h-[60vh] divide-y divide-line overflow-auto">
+      <div className="nowheel max-h-[60vh] divide-y divide-line overflow-auto">
         {conflicts.map((c) => (
           <div key={c.id} className="space-y-2 p-3 text-[12.5px]">
             <div className="rounded-md border border-line px-2.5 py-2">

@@ -5,6 +5,8 @@
 import { Command } from "cmdk";
 import { useEffect, useState } from "react";
 
+import { useAgentContext } from "../lib/store";
+
 const ACTIONS = [
   { icon: "✦", label: "整理选中内容", hint: "去重 · 分级 · 抽离矛盾" },
   { icon: "☑", label: "生成执行清单", hint: "航空检查单级严谨" },
@@ -14,6 +16,7 @@ const ACTIONS = [
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const selected = useAgentContext((s) => s.selected);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -42,10 +45,25 @@ export function CommandPalette() {
           <span className="font-mono text-[12px] text-accent">⌘K</span>
           <Command.Input
             autoFocus
-            placeholder="问 Agent…  基于当前选区"
+            placeholder={selected.length ? "问 Agent…  关于选中内容" : "问 Agent…  先在画布上选中节点"}
             className="w-full bg-transparent py-3.5 text-[14px] text-ink outline-none placeholder:text-faint"
           />
         </div>
+        {selected.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-paper px-3 py-2">
+            <span className="label mr-1">上下文</span>
+            {selected.map((c) => (
+              <span
+                key={c.id}
+                className={`rounded-md px-1.5 py-0.5 text-[11px] ${
+                  c.kind === "conflict" ? "bg-warn-soft text-warn" : "bg-accent-soft text-accent"
+                }`}
+              >
+                {c.label}
+              </span>
+            ))}
+          </div>
+        )}
         <Command.List className="max-h-80 overflow-auto p-1.5">
           <Command.Empty className="px-3 py-8 text-center text-[13px] text-faint">
             没有匹配的动作

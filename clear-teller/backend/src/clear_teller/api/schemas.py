@@ -34,10 +34,18 @@ class ConflictOut(BaseModel):
     right: ConflictSideOut
 
 
+class UnitOut(BaseModel):
+    id: str
+    text: str
+    provenance: str | None
+    surfaced: bool  # promoted into the checklist / a conflict side
+
+
 class DocumentOut(BaseModel):
     id: str
     status: str
     title: str | None
     checklist: list[ChecklistItemOut]
     conflicts: list[ConflictOut]
+    units: list[UnitOut]  # non-merged units; unsurfaced ones are the faint fragments
     unit_count: int
