@@ -1,20 +1,13 @@
-// The focal element: the checklist. It is always present and visually dominant —
+// The focal element: the checklist. Always present and visually dominant —
 // crisp, numbered, monospace ticks, aviation-checklist rigour. Each row links
-// back to full source content (content-complete), surfaced on expand.
+// back to its source provenance (content-complete), revealed on hover.
 
 import { useState } from "react";
 
-type Item = { id: string; text: string; source: string };
+import type { ChecklistItem } from "../lib/api";
 
-const SAMPLE: Item[] = [
-  { id: "1", text: "确认上线时间已与各方对齐", source: "来自纪要 · 第2段" },
-  { id: "2", text: "导出对账单并核对金额", source: "来自 budget.xlsx" },
-  { id: "3", text: "通知客服更新话术", source: "来自聊天 · 14:07" },
-  { id: "4", text: "灰度 10% 流量并观察 30 分钟", source: "来自纪要 · 第5段" },
-];
-
-function Row({ item, index }: { item: Item; index: number }) {
-  const [checked, setChecked] = useState(false);
+function Row({ item, index }: { item: ChecklistItem; index: number }) {
+  const [checked, setChecked] = useState(item.checked);
   const [open, setOpen] = useState(false);
   return (
     <li className="group border-b border-line last:border-0">
@@ -36,25 +29,27 @@ function Row({ item, index }: { item: Item; index: number }) {
             </span>
             {item.text}
           </div>
-          {open && (
+          {open && item.source.length > 0 && (
             <div className="mt-1.5 rounded-md bg-paper px-2.5 py-1.5 text-[12px] text-ink-soft">
-              {item.source}
+              来源 · {item.source.join("、")}
             </div>
           )}
         </div>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="label mt-1 shrink-0 opacity-0 transition group-hover:opacity-100"
-        >
-          {open ? "收起" : "原文"}
-        </button>
+        {item.source.length > 0 && (
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="label mt-1 shrink-0 opacity-0 transition group-hover:opacity-100"
+          >
+            {open ? "收起" : "原文"}
+          </button>
+        )}
       </div>
     </li>
   );
 }
 
-export function FocalChecklist() {
-  const done = 0;
+export function FocalChecklist({ items }: { items: ChecklistItem[] }) {
+  const done = items.filter((i) => i.checked).length;
   return (
     <section className="pointer-events-auto w-[420px] overflow-hidden rounded-xl border border-line bg-surface shadow-focal">
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
@@ -63,14 +58,18 @@ export function FocalChecklist() {
           <span className="text-[13px] font-semibold text-ink">执行清单</span>
         </div>
         <span className="font-mono text-[11px] text-faint">
-          {done}/{SAMPLE.length}
+          {done}/{items.length}
         </span>
       </header>
-      <ol>
-        {SAMPLE.map((it, i) => (
-          <Row key={it.id} item={it} index={i} />
-        ))}
-      </ol>
+      {items.length === 0 ? (
+        <div className="px-4 py-8 text-center text-[13px] text-faint">没有可执行项</div>
+      ) : (
+        <ol>
+          {items.map((it, i) => (
+            <Row key={it.id} item={it} index={i} />
+          ))}
+        </ol>
+      )}
       <footer className="border-t border-line px-4 py-2.5 text-center">
         <span className="label">逐条核对 · 无需动脑</span>
       </footer>

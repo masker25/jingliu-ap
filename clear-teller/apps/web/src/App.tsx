@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { AgentDock } from "./agent/AgentDock";
 import { CommandPalette } from "./agent/CommandPalette";
 import { RunTimeline } from "./agent/RunTimeline";
-import { getHealth } from "./lib/api";
+import { getDocument, getHealth } from "./lib/api";
+import { Composer } from "./scene/Composer";
 import { ConflictCard } from "./scene/ConflictCard";
 import { DivergentNodes } from "./scene/DivergentNodes";
 import { FocalChecklist } from "./scene/FocalChecklist";
 
-// The design pass renders the product's visual identity over a divergent
-// dot-grid canvas. The tldraw substrate (src/canvas/Canvas.tsx) becomes the live
-// interactive layer in P1; here we present the focus/fade language directly.
+// Two states over the divergent dot-grid canvas:
+//  · idle    — the Composer invites a messy blob.
+//  · ready   — the focal checklist + separate conflict zone, from real data.
+// The tldraw substrate (src/canvas/Canvas.tsx) becomes the live interactive
+// layer in P1.5; here the focus/fade language is presented directly.
 
 function HealthBadge() {
   const { data, isError } = useQuery({ queryKey: ["health"], queryFn: getHealth });
@@ -23,29 +27,46 @@ function HealthBadge() {
   );
 }
 
-function Brand() {
+function Brand({ onReset, showReset }: { onReset: () => void; showReset: boolean }) {
   return (
-    <div className="pointer-events-none absolute left-4 top-4 z-40 select-none">
+    <div className="absolute left-4 top-4 z-40 select-none">
       <div className="text-[15px] font-semibold tracking-tight text-ink">clear teller</div>
       <div className="label mt-0.5">混乱进 · 清单出</div>
+      {showReset && (
+        <button onClick={onReset} className="label pointer-events-auto mt-2 hover:text-accent">
+          ＋ 新建
+        </button>
+      )}
     </div>
   );
 }
 
 export default function App() {
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const { data: doc } = useQuery({
+    queryKey: ["document", documentId],
+    queryFn: () => getDocument(documentId!),
+    enabled: !!documentId,
+  });
+
   return (
     <div className="dot-grid relative h-full w-full overflow-hidden bg-paper">
-      {/* divergent, faint raw fragments */}
       <DivergentNodes />
 
-      {/* focal structure brought forward */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-6">
-        <FocalChecklist />
-        <ConflictCard />
+        {!documentId ? (
+          <Composer onDone={setDocumentId} />
+        ) : doc ? (
+          <>
+            <FocalChecklist items={doc.checklist} />
+            <ConflictCard conflicts={doc.conflicts} />
+          </>
+        ) : (
+          <div className="label">读取结果…</div>
+        )}
       </div>
 
-      {/* agent + chrome */}
-      <Brand />
+      <Brand onReset={() => setDocumentId(null)} showReset={!!documentId} />
       <RunTimeline />
       <AgentDock />
       <HealthBadge />

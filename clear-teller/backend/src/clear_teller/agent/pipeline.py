@@ -1,77 +1,141 @@
-"""Agent processing pipeline — the async DAG skeleton.
+"""Agent processing pipeline — the async DAG, now wired to a real engine + DB.
 
-Steps run as an async DAG: sequential where there is a data dependency, fanned
-out in parallel where there is not. The map-reduce shape is:
+Shape (data-dependency aware): atomize -> [dedupe || conflicts] -> assemble.
+dedupe and conflicts are independent reads over the units, so they fan out in
+parallel (via threads) and fan back in for assembly. Every phase publishes a
+progress event (real completion, not a fake animation) and appends an audit
+event so the Run Timeline reflects exactly what happened.
 
-    extract -> atomize -> classify -> [dedupe || conflict] -> assemble
-
-``dedupe`` and ``conflict`` operate over independent unit clusters, so each fans
-out parallel sub-tasks (bounded by the model router's per-provider semaphores)
-and the results fan back in for ``assemble``. Every step emits a progress tick so
-the frontend progress bar tracks real completion, not a fake animation.
-
-P0 ships the orchestration shape with stubbed steps; P1 fills each step in.
+The engine is pluggable: P1 ships the local mock engine; a model-backed engine
+drops in behind the same phase calls once a provider key exists.
 """
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+import json
+from datetime import UTC, datetime
+
+from clear_teller.agent import mock_engine
+from clear_teller.agent.events import broker
+from clear_teller.db import models
+from clear_teller.db.session import write_session
 
 
-@dataclass
-class PipelineContext:
-    document_id: str
-    run_id: str
-    progress: float = 0.0
-    on_progress: Callable[[float], Awaitable[None]] | None = None
-    notes: list[str] = field(default_factory=list)
-
-    async def tick(self, amount: float, note: str) -> None:
-        self.progress = min(1.0, self.progress + amount)
-        self.notes.append(note)
-        if self.on_progress is not None:
-            await self.on_progress(self.progress)
+async def _publish(run_id: str, phase: str, progress: float) -> None:
+    await broker.publish(run_id, {"phase": phase, "progress": round(progress, 3)})
 
 
-async def _extract(ctx: PipelineContext) -> None:
-    # P1: parse text/Word/PDF, read PNG via the vision route.
-    await ctx.tick(0.15, "extract")
+def _audit(session, run_id: str, document_id: str, action: str, payload: dict | None = None):
+    session.add(
+        models.AuditEvent(
+            run_id=run_id,
+            document_id=document_id,
+            actor="agent",
+            action=action,
+            provider="mock",
+            model="mock-engine",
+            payload=json.dumps(payload, ensure_ascii=False) if payload else None,
+        )
+    )
 
 
-async def _atomize(ctx: PipelineContext) -> None:
-    # P1: split into source-anchored InfoUnits.
-    await ctx.tick(0.15, "atomize")
+async def run_ingest(run_id: str, document_id: str, text: str) -> None:
+    """Run the full pipeline for one document and persist all outputs."""
+    try:
+        # --- atomize (sequential) ---
+        units = await asyncio.to_thread(mock_engine.atomize, text)
+        await _publish(run_id, "atomize", 0.3)
+
+        # --- dedupe || conflicts (parallel fan-out) ---
+        async with asyncio.TaskGroup() as tg:
+            t_merge = tg.create_task(asyncio.to_thread(mock_engine.dedupe, units))
+            t_conf = tg.create_task(
+                asyncio.to_thread(lambda: mock_engine.conflicts(units, mock_engine.dedupe(units)))
+            )
+        merges = t_merge.result()
+        confs = t_conf.result()
+        await _publish(run_id, "dedupe+conflict", 0.7)
+
+        # --- assemble ---
+        items, taxonomy = await asyncio.to_thread(mock_engine.checklist, units, merges)
+        await _publish(run_id, "assemble", 0.9)
+
+        _persist(run_id, document_id, units, merges, taxonomy, confs, items)
+        await _publish(run_id, "done", 1.0)
+        await broker.publish(run_id, {"phase": "done", "progress": 1.0, "final": True})
+    except Exception as exc:  # surface failure to the stream + DB
+        with write_session() as s:
+            run = s.get(models.Run, run_id)
+            if run:
+                run.status = models.RunStatus.failed
+                run.finished_at = datetime.now(UTC)
+                s.add(run)
+        await broker.publish(run_id, {"phase": "failed", "error": str(exc), "final": True})
+        raise
 
 
-async def _classify(ctx: PipelineContext) -> None:
-    # P1: find commonality -> up to 3-level taxonomy (degrade to 1 if simple).
-    await ctx.tick(0.20, "classify")
+def _persist(run_id, document_id, units, merges, taxonomy, confs, items) -> None:
+    """Write units, taxonomy, checklist, conflicts, audit; flip doc to ready."""
+    with write_session() as s:
+        # info units (provenance preserved = content-complete base)
+        unit_ids: list[str] = []
+        for u in units:
+            iu = models.InfoUnit(document_id=document_id, text=u.text, provenance=u.provenance)
+            s.add(iu)
+            unit_ids.append(iu.id)
+        s.flush()
 
+        # dedupe links
+        for dup_idx, survivor_idx in merges.items():
+            s.get(models.InfoUnit, unit_ids[dup_idx]).merged_into_id = unit_ids[survivor_idx]
 
-async def _dedupe(ctx: PipelineContext) -> None:
-    # P1: fan out per-cluster similarity + LLM-confirmed merges.
-    await ctx.tick(0.20, "dedupe")
+        # taxonomy (1-level for the mock; up to 3 with a model)
+        for order, (label, idxs) in enumerate(taxonomy.items()):
+            node = models.TaxonomyNode(document_id=document_id, label=label, level=1, order=order)
+            s.add(node)
+            s.flush()
+            for i in idxs:
+                s.get(models.InfoUnit, unit_ids[i]).taxonomy_node_id = node.id
 
+        # checklist (always present)
+        for order, (text, src_idxs) in enumerate(items):
+            s.add(
+                models.ChecklistItem(
+                    document_id=document_id,
+                    text=text,
+                    order=order,
+                    source_unit_ids=json.dumps([unit_ids[i] for i in src_idxs]),
+                )
+            )
 
-async def _conflict(ctx: PipelineContext) -> None:
-    # P1: fan out per-cluster contradiction detection -> Conflict pairs.
-    await ctx.tick(0.20, "conflict")
+        # conflicts (kept separate)
+        for left_idx, right_idx, summary in confs:
+            s.add(
+                models.Conflict(
+                    document_id=document_id,
+                    left_unit_id=unit_ids[left_idx],
+                    right_unit_id=unit_ids[right_idx],
+                    summary=summary,
+                )
+            )
 
+        _audit(
+            s,
+            run_id,
+            document_id,
+            "process_complete",
+            {
+                "units": len(units),
+                "merged": len(merges),
+                "checklist": len(items),
+                "conflicts": len(confs),
+            },
+        )
 
-async def _assemble(ctx: PipelineContext) -> None:
-    # P1: build checklist (always) + conflict zone + content layer + views.
-    await ctx.tick(0.10, "assemble")
-
-
-async def run_pipeline(ctx: PipelineContext) -> PipelineContext:
-    """Execute the DAG. dedupe and conflict run in parallel (fan-out/fan-in)."""
-    await _extract(ctx)
-    await _atomize(ctx)
-    await _classify(ctx)
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(_dedupe(ctx))
-        tg.create_task(_conflict(ctx))
-    await _assemble(ctx)
-    return ctx
+        doc = s.get(models.Document, document_id)
+        doc.status = models.DocumentStatus.ready
+        run = s.get(models.Run, run_id)
+        run.status = models.RunStatus.done
+        run.progress = 1.0
+        run.finished_at = datetime.now(UTC)

@@ -1,5 +1,5 @@
 """Agent orchestration: the async DAG processing pipeline."""
 
-from clear_teller.agent.pipeline import PipelineContext, run_pipeline
+from clear_teller.agent.pipeline import run_ingest
 
-__all__ = ["PipelineContext", "run_pipeline"]
+__all__ = ["run_ingest"]

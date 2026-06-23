@@ -4,13 +4,59 @@
 
 import type { paths } from "@ct/shared-types/api.d.ts";
 
-type HealthResponse =
-  paths["/health"]["get"]["responses"][200]["content"]["application/json"];
-
 const BASE = "/api"; // Vite proxies /api -> http://localhost:8000
 
-export async function getHealth(): Promise<HealthResponse> {
+type Json<T> = T extends { content: { "application/json": infer J } } ? J : never;
+
+export type Health =
+  Json<paths["/health"]["get"]["responses"][200]>;
+export type IngestResponse =
+  Json<paths["/ingest"]["post"]["responses"][200]>;
+export type DocumentOut =
+  Json<paths["/documents/{document_id}"]["get"]["responses"][200]>;
+export type ChecklistItem = DocumentOut["checklist"][number];
+export type Conflict = DocumentOut["conflicts"][number];
+
+export async function getHealth(): Promise<Health> {
   const res = await fetch(`${BASE}/health`);
   if (!res.ok) throw new Error(`health ${res.status}`);
   return res.json();
+}
+
+export async function ingestText(text: string, title?: string): Promise<IngestResponse> {
+  const res = await fetch(`${BASE}/ingest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, title }),
+  });
+  if (!res.ok) throw new Error(`ingest ${res.status}`);
+  return res.json();
+}
+
+export async function getDocument(id: string): Promise<DocumentOut> {
+  const res = await fetch(`${BASE}/documents/${id}`);
+  if (!res.ok) throw new Error(`document ${res.status}`);
+  return res.json();
+}
+
+export type ProgressEvent = { phase: string; progress: number; final?: boolean; error?: string };
+
+// Subscribe to a run's SSE progress feed. Resolves when the run reaches a
+// terminal (final) event.
+export function streamRun(runId: string, onEvent: (e: ProgressEvent) => void): Promise<void> {
+  return new Promise((resolve) => {
+    const es = new EventSource(`${BASE}/runs/${runId}/stream`);
+    es.onmessage = (m) => {
+      const e = JSON.parse(m.data) as ProgressEvent;
+      onEvent(e);
+      if (e.final) {
+        es.close();
+        resolve();
+      }
+    };
+    es.onerror = () => {
+      es.close();
+      resolve();
+    };
+  });
 }
