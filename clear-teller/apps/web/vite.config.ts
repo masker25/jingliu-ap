@@ -2,6 +2,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // base is "/" for local/Vercel and "/<repo>/" for GitHub Pages project sites
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react()],
   server: {
     port: 5173,
