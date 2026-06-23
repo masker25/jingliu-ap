@@ -3,7 +3,7 @@ name: Deploy clear teller demo to Pages
 on:
   push:
     branches:
-      - claude/clear-teller-concept-bn3j6u
+      - main
   workflow_dispatch:
 
 permissions:
