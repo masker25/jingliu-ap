@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy clear teller demo to Pages
 
 on:
   push:
@@ -22,29 +22,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
-          cache: npm
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: clear-teller/pnpm-lock.yaml
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install
+        working-directory: clear-teller
+        run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: npm run build
+      - name: Build demo
+        working-directory: clear-teller
+        run: pnpm --filter web build
         env:
-          GITHUB_PAGES: 'true'
+          # GitHub Pages project site is served from /<repo>/
+          VITE_BASE: /${{ github.event.repository.name }}/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: clear-teller/apps/web/dist
 
   deploy:
     environment:
