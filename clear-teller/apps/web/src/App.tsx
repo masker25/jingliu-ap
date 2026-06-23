@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { AgentDock } from "./agent/AgentDock";
@@ -8,6 +8,7 @@ import { FlowCanvas } from "./canvas/FlowCanvas";
 import { getDocument, getHealth } from "./lib/api";
 import { Composer } from "./scene/Composer";
 import { DivergentNodes } from "./scene/DivergentNodes";
+import { DocumentList } from "./scene/DocumentList";
 
 // Two states over the divergent dot-grid canvas:
 //  · idle    — the Composer invites a messy blob.
@@ -52,11 +53,17 @@ export default function App() {
     else localStorage.removeItem(LS_KEY);
     setDocumentIdState(id);
   };
+  const qc = useQueryClient();
   const { data: doc } = useQuery({
     queryKey: ["document", documentId],
     queryFn: () => getDocument(documentId!),
     enabled: !!documentId,
   });
+
+  const openDocument = (id: string) => {
+    setDocumentId(id);
+    qc.invalidateQueries({ queryKey: ["documents"] });
+  };
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-paper">
@@ -64,7 +71,7 @@ export default function App() {
         <div className="dot-grid absolute inset-0">
           <DivergentNodes />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <Composer onDone={setDocumentId} />
+            <Composer onDone={openDocument} />
           </div>
         </div>
       ) : doc ? (
@@ -76,6 +83,11 @@ export default function App() {
       )}
 
       <Brand onReset={() => setDocumentId(null)} showReset={!!documentId} />
+      <DocumentList
+        currentId={documentId}
+        onOpen={openDocument}
+        onNew={() => setDocumentId(null)}
+      />
       <RunTimeline documentId={documentId} />
       <AgentDock />
       <HealthBadge />

@@ -34,6 +34,13 @@ class ConflictOut(BaseModel):
     right: ConflictSideOut
 
 
+class DocumentSummary(BaseModel):
+    id: str
+    title: str | None
+    status: str
+    created_at: str
+
+
 class UnitOut(BaseModel):
     id: str
     text: str

@@ -25,6 +25,7 @@ from clear_teller.api.schemas import (
     ConflictOut,
     ConflictSideOut,
     DocumentOut,
+    DocumentSummary,
     IngestRequest,
     IngestResponse,
     UnitOut,
@@ -85,6 +86,19 @@ async def run_stream(run_id: str) -> StreamingResponse:
             broker.unsubscribe(run_id, q)
 
     return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@router.get("/documents", response_model=list[DocumentSummary])
+def list_documents(session: Session = Depends(get_session)) -> list[DocumentSummary]:
+    docs = session.exec(
+        select(models.Document).order_by(models.Document.created_at.desc()).limit(50)
+    ).all()
+    return [
+        DocumentSummary(
+            id=d.id, title=d.title, status=d.status, created_at=d.created_at.isoformat()
+        )
+        for d in docs
+    ]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentOut)
