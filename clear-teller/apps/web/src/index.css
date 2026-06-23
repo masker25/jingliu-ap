@@ -2,9 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: theme("colors.paper");
+    color: theme("colors.ink");
+    font-family: theme("fontFamily.sans");
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer components {
+  /* the divergent canvas backdrop: a faint dot grid, content fades into it */
+  .dot-grid {
+    background-image: radial-gradient(theme("colors.line") 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -1px -1px;
+  }
+
+  /* small uppercase section label — the "instrument panel" voice */
+  .label {
+    @apply font-mono text-[10px] uppercase tracking-label text-faint;
+  }
 }
