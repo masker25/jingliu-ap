@@ -40,8 +40,18 @@ function Brand({ onReset, showReset }: { onReset: () => void; showReset: boolean
   );
 }
 
+const LS_KEY = "ct.documentId";
+
 export default function App() {
-  const [documentId, setDocumentId] = useState<string | null>(null);
+  // remember the open document across reloads so persisted state is restored
+  const [documentId, setDocumentIdState] = useState<string | null>(
+    () => localStorage.getItem(LS_KEY),
+  );
+  const setDocumentId = (id: string | null) => {
+    if (id) localStorage.setItem(LS_KEY, id);
+    else localStorage.removeItem(LS_KEY);
+    setDocumentIdState(id);
+  };
   const { data: doc } = useQuery({
     queryKey: ["document", documentId],
     queryFn: () => getDocument(documentId!),
@@ -66,7 +76,7 @@ export default function App() {
       )}
 
       <Brand onReset={() => setDocumentId(null)} showReset={!!documentId} />
-      <RunTimeline />
+      <RunTimeline documentId={documentId} />
       <AgentDock />
       <HealthBadge />
       <CommandPalette />

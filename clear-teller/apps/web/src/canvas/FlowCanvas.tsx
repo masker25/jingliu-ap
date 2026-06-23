@@ -13,9 +13,10 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import type { DocumentOut } from "../lib/api";
+import { saveCanvas, type DocumentOut } from "../lib/api";
 import { useAgentContext, type ContextChip } from "../lib/store";
 import { ChecklistNode } from "./nodes/ChecklistNode";
 import { ConflictNode } from "./nodes/ConflictNode";
@@ -32,14 +33,26 @@ const CONFLICT = { x: 560, y: 0 };
 const MAX_FRAGMENTS = 12;
 
 function buildNodes(doc: DocumentOut): Node[] {
+  // restore saved positions when present, else use the computed layout
+  const saved = doc.canvas ?? {};
+  const at = (id: string, fallback: { x: number; y: number }) => {
+    const p = saved[id];
+    return p ? { x: p.x, y: p.y } : fallback;
+  };
+
   const nodes: Node[] = [
-    { id: "checklist", type: "checklist", position: FOCAL, data: { items: doc.checklist } },
+    {
+      id: "checklist",
+      type: "checklist",
+      position: at("checklist", FOCAL),
+      data: { items: doc.checklist, documentId: doc.id },
+    },
   ];
   if (doc.conflicts.length > 0) {
     nodes.push({
       id: "conflict",
       type: "conflict",
-      position: CONFLICT,
+      position: at("conflict", CONFLICT),
       data: { conflicts: doc.conflicts },
     });
   }
@@ -48,10 +61,11 @@ function buildNodes(doc: DocumentOut): Node[] {
   fragments.forEach((u, i) => {
     const angle = i * 2.399; // golden angle in radians
     const radius = 380 + (i % 3) * 130;
+    const id = `frag-${u.id}`;
     nodes.push({
-      id: `frag-${u.id}`,
+      id,
       type: "fragment",
-      position: { x: 280 + radius * Math.cos(angle), y: 120 + radius * Math.sin(angle) },
+      position: at(id, { x: 280 + radius * Math.cos(angle), y: 120 + radius * Math.sin(angle) }),
       data: { text: u.text, provenance: u.provenance },
     });
   });
@@ -69,11 +83,23 @@ export function FlowCanvas({ doc }: { doc: DocumentOut }) {
   const initial = useMemo(() => buildNodes(doc), [doc]);
   const [nodes, , onNodesChange] = useNodesState(initial);
   const setSelected = useAgentContext((s) => s.setSelected);
+  const qc = useQueryClient();
+
+  // persist positions when a drag ends; refresh the audit-backed timeline
+  const persist = (current: Node[]) => {
+    const positions = Object.fromEntries(
+      current.map((n) => [n.id, { x: Math.round(n.position.x), y: Math.round(n.position.y) }]),
+    );
+    void saveCanvas(doc.id, positions).then(() =>
+      qc.invalidateQueries({ queryKey: ["activity", doc.id] }),
+    );
+  };
 
   return (
     <ReactFlow
       nodes={nodes}
       onNodesChange={onNodesChange}
+      onNodeDragStop={() => persist(nodes)}
       nodeTypes={nodeTypes}
       onSelectionChange={({ nodes: sel }) => setSelected(sel.map(chipFor))}
       fitView

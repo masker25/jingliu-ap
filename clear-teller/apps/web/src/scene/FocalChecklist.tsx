@@ -2,18 +2,29 @@
 // crisp, numbered, monospace ticks, aviation-checklist rigour. Each row links
 // back to its source provenance (content-complete), revealed on hover.
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import type { ChecklistItem } from "../lib/api";
+import { patchChecklist, type ChecklistItem } from "../lib/api";
 
-function Row({ item, index }: { item: ChecklistItem; index: number }) {
+function Row({ item, index, documentId }: { item: ChecklistItem; index: number; documentId?: string }) {
   const [checked, setChecked] = useState(item.checked);
   const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const toggle = () => {
+    const next = !checked;
+    setChecked(next); // optimistic
+    void patchChecklist(item.id, next).then(() => {
+      if (documentId) qc.invalidateQueries({ queryKey: ["activity", documentId] });
+    });
+  };
+
   return (
     <li className="group border-b border-line last:border-0">
       <div className="flex items-start gap-3 px-4 py-3">
         <button
-          onClick={() => setChecked((v) => !v)}
+          onClick={toggle}
           aria-pressed={checked}
           className={`nodrag mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border font-mono text-[11px] transition
             ${checked ? "border-ok bg-ok-soft text-ok" : "border-line text-transparent hover:border-accent"}`}
@@ -48,7 +59,13 @@ function Row({ item, index }: { item: ChecklistItem; index: number }) {
   );
 }
 
-export function FocalChecklist({ items }: { items: ChecklistItem[] }) {
+export function FocalChecklist({
+  items,
+  documentId,
+}: {
+  items: ChecklistItem[];
+  documentId?: string;
+}) {
   const done = items.filter((i) => i.checked).length;
   return (
     <section className="pointer-events-auto w-[420px] overflow-hidden rounded-xl border border-line bg-surface shadow-focal">
@@ -66,7 +83,7 @@ export function FocalChecklist({ items }: { items: ChecklistItem[] }) {
       ) : (
         <ol>
           {items.map((it, i) => (
-            <Row key={it.id} item={it} index={i} />
+            <Row key={it.id} item={it} index={i} documentId={documentId} />
           ))}
         </ol>
       )}

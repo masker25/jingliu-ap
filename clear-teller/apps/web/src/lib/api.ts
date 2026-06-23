@@ -16,6 +16,9 @@ export type DocumentOut =
   Json<paths["/documents/{document_id}"]["get"]["responses"][200]>;
 export type ChecklistItem = DocumentOut["checklist"][number];
 export type Conflict = DocumentOut["conflicts"][number];
+export type Activity =
+  Json<paths["/documents/{document_id}/activity"]["get"]["responses"][200]>[number];
+export type CanvasPositions = NonNullable<DocumentOut["canvas"]>;
 
 export async function getHealth(): Promise<Health> {
   const res = await fetch(`${BASE}/health`);
@@ -36,6 +39,28 @@ export async function ingestText(text: string, title?: string): Promise<IngestRe
 export async function getDocument(id: string): Promise<DocumentOut> {
   const res = await fetch(`${BASE}/documents/${id}`);
   if (!res.ok) throw new Error(`document ${res.status}`);
+  return res.json();
+}
+
+export async function saveCanvas(documentId: string, positions: CanvasPositions): Promise<void> {
+  await fetch(`${BASE}/documents/${documentId}/canvas`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ positions }),
+  });
+}
+
+export async function patchChecklist(itemId: string, checked: boolean): Promise<void> {
+  await fetch(`${BASE}/checklist/${itemId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ checked }),
+  });
+}
+
+export async function getActivity(documentId: string): Promise<Activity[]> {
+  const res = await fetch(`${BASE}/documents/${documentId}/activity`);
+  if (!res.ok) throw new Error(`activity ${res.status}`);
   return res.json();
 }
 

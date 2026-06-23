@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -17,7 +18,10 @@ from sqlmodel import Session, select
 from clear_teller.agent.events import broker
 from clear_teller.agent.pipeline import run_ingest
 from clear_teller.api.schemas import (
+    ActivityOut,
+    CanvasSaveRequest,
     ChecklistItemOut,
+    CheckPatch,
     ConflictOut,
     ConflictSideOut,
     DocumentOut,
@@ -152,6 +156,9 @@ def get_document(document_id: str, session: Session = Depends(get_session)) -> D
         if u.merged_into_id is None
     ]
 
+    canvas_row = session.get(models.CanvasState, document_id)
+    canvas = json.loads(canvas_row.state) if canvas_row else None
+
     return DocumentOut(
         id=doc.id,
         status=doc.status,
@@ -160,4 +167,92 @@ def get_document(document_id: str, session: Session = Depends(get_session)) -> D
         conflicts=conflict_out,
         units=units_out,
         unit_count=len(units),
+        canvas=canvas,
     )
+
+
+@router.post("/documents/{document_id}/canvas", status_code=204)
+def save_canvas(document_id: str, req: CanvasSaveRequest) -> None:
+    """Persist node positions (event-sourced via an audit event)."""
+    with write_session() as s:
+        if not s.get(models.Document, document_id):
+            raise HTTPException(status_code=404, detail="document not found")
+        row = s.get(models.CanvasState, document_id)
+        state = json.dumps(req.positions)
+        if row:
+            row.state = state
+            row.updated_at = datetime.now(UTC)
+        else:
+            s.add(models.CanvasState(document_id=document_id, state=state))
+        s.add(
+            models.AuditEvent(
+                document_id=document_id,
+                actor="user",
+                action="canvas_update",
+                payload=json.dumps({"nodes": len(req.positions)}),
+            )
+        )
+
+
+@router.patch("/checklist/{item_id}", status_code=204)
+def patch_checklist(item_id: str, req: CheckPatch) -> None:
+    """Toggle a checklist item; record the action in the audit stream."""
+    with write_session() as s:
+        item = s.get(models.ChecklistItem, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="item not found")
+        item.checked = req.checked
+        s.add(
+            models.AuditEvent(
+                document_id=item.document_id,
+                actor="user",
+                action="check" if req.checked else "uncheck",
+                payload=json.dumps({"item": item_id}, ensure_ascii=False),
+            )
+        )
+
+
+_TITLES = {
+    "ingest_text": "投喂内容",
+    "process_complete": "整理完成",
+    "check": "勾选清单项",
+    "uncheck": "取消勾选",
+    "canvas_update": "调整画布布局",
+}
+
+
+@router.get("/documents/{document_id}/activity", response_model=list[ActivityOut])
+def get_activity(
+    document_id: str, session: Session = Depends(get_session)
+) -> list[ActivityOut]:
+    """The audit stream for this document, rendered for the Run Timeline."""
+    events = session.exec(
+        select(models.AuditEvent)
+        .where(models.AuditEvent.document_id == document_id)
+        .order_by(models.AuditEvent.created_at.desc())
+        .limit(30)
+    ).all()
+    out: list[ActivityOut] = []
+    for e in events:
+        detail = None
+        if e.payload:
+            data = json.loads(e.payload)
+            if e.action == "process_complete":
+                detail = (
+                    f"清单 {data.get('checklist', 0)} · "
+                    f"冲突 {data.get('conflicts', 0)} · "
+                    f"合并 {data.get('merged', 0)}"
+                )
+        out.append(
+            ActivityOut(
+                id=e.id,
+                time=e.created_at.isoformat(),
+                actor=e.actor,
+                action=e.action,
+                title=_TITLES.get(e.action, e.action),
+                detail=detail,
+                provider=e.provider,
+                model=e.model,
+            )
+        )
+    return out

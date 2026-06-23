@@ -49,3 +49,23 @@ class DocumentOut(BaseModel):
     conflicts: list[ConflictOut]
     units: list[UnitOut]  # non-merged units; unsurfaced ones are the faint fragments
     unit_count: int
+    canvas: dict[str, dict[str, float]] | None  # node id -> {x, y}; restores layout
+
+
+class CanvasSaveRequest(BaseModel):
+    positions: dict[str, dict[str, float]]  # node id -> {x, y}
+
+
+class CheckPatch(BaseModel):
+    checked: bool
+
+
+class ActivityOut(BaseModel):
+    id: str
+    time: str  # ISO timestamp
+    actor: str
+    action: str
+    title: str
+    detail: str | None
+    provider: str | None
+    model: str | None

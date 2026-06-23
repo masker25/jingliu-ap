@@ -89,6 +89,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/documents/{document_id}/canvas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Canvas
+         * @description Persist node positions (event-sourced via an audit event).
+         */
+        post: operations["save_canvas_documents__document_id__canvas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/checklist/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Patch Checklist
+         * @description Toggle a checklist item; record the action in the audit stream.
+         */
+        patch: operations["patch_checklist_checklist__item_id__patch"];
+        trace?: never;
+    };
+    "/documents/{document_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Activity
+         * @description The audit stream for this document, rendered for the Run Timeline.
+         */
+        get: operations["get_activity_documents__document_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -110,6 +170,39 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityOut */
+        ActivityOut: {
+            /** Id */
+            id: string;
+            /** Time */
+            time: string;
+            /** Actor */
+            actor: string;
+            /** Action */
+            action: string;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+        };
+        /** CanvasSaveRequest */
+        CanvasSaveRequest: {
+            /** Positions */
+            positions: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+        };
+        /** CheckPatch */
+        CheckPatch: {
+            /** Checked */
+            checked: boolean;
+        };
         /** ChecklistItemOut */
         ChecklistItemOut: {
             /** Id */
@@ -153,6 +246,12 @@ export interface components {
             units: components["schemas"]["UnitOut"][];
             /** Unit Count */
             unit_count: number;
+            /** Canvas */
+            canvas: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            } | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -332,6 +431,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_canvas_documents__document_id__canvas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CanvasSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_checklist_checklist__item_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_activity_documents__document_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityOut"][];
                 };
             };
             /** @description Validation Error */
