@@ -17,6 +17,9 @@ const ACTIONS = [
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const selected = useAgentContext((s) => s.selected);
+  const fed = useAgentContext((s) => s.fed);
+  // fed (deliberate) + selected (transient), de-duplicated by id
+  const context = [...fed, ...selected.filter((s) => !fed.some((f) => f.id === s.id))];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,14 +48,14 @@ export function CommandPalette() {
           <span className="font-mono text-[12px] text-accent">⌘K</span>
           <Command.Input
             autoFocus
-            placeholder={selected.length ? "问 Agent…  关于选中内容" : "问 Agent…  先在画布上选中节点"}
+            placeholder={context.length ? "问 Agent…  关于这些内容" : "问 Agent…  选中或投喂节点带上上下文"}
             className="w-full bg-transparent py-3.5 text-[14px] text-ink outline-none placeholder:text-faint"
           />
         </div>
-        {selected.length > 0 && (
+        {context.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-paper px-3 py-2">
             <span className="label mr-1">上下文</span>
-            {selected.map((c) => (
+            {context.map((c) => (
               <span
                 key={c.id}
                 className={`rounded-md px-1.5 py-0.5 text-[11px] ${
