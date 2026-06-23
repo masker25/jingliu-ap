@@ -198,14 +198,24 @@ def save_canvas(document_id: str, req: CanvasSaveRequest) -> None:
             row.updated_at = datetime.now(UTC)
         else:
             s.add(models.CanvasState(document_id=document_id, state=state))
-        s.add(
-            models.AuditEvent(
-                document_id=document_id,
-                actor="user",
-                action="canvas_update",
-                payload=json.dumps({"nodes": len(req.positions)}),
+        # coalesce consecutive layout tweaks instead of flooding the audit stream
+        last = s.exec(
+            select(models.AuditEvent)
+            .where(models.AuditEvent.document_id == document_id)
+            .order_by(models.AuditEvent.created_at.desc())
+            .limit(1)
+        ).first()
+        if last and last.action == "canvas_update":
+            last.created_at = datetime.now(UTC)
+        else:
+            s.add(
+                models.AuditEvent(
+                    document_id=document_id,
+                    actor="user",
+                    action="canvas_update",
+                    payload=json.dumps({"nodes": len(req.positions)}),
+                )
             )
-        )
 
 
 @router.patch("/checklist/{item_id}", status_code=204)

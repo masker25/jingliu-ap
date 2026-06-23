@@ -33,7 +33,7 @@ export function DocumentList({
         ☰ 历史 {docs.length > 0 && <span className="text-faint">({docs.length})</span>}
       </button>
       {open && (
-        <div className="pointer-events-auto mt-2 w-60 overflow-hidden rounded-xl border border-line bg-surface/95 shadow-card backdrop-blur">
+        <div className="pointer-events-auto mt-2 w-[min(240px,68vw)] overflow-hidden rounded-xl border border-line bg-surface/95 shadow-card backdrop-blur">
           <button
             onClick={() => {
               onNew();

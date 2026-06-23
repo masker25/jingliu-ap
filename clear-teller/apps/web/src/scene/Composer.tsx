@@ -46,7 +46,7 @@ export function Composer({ onDone }: { onDone: (documentId: string) => void }) {
   }
 
   return (
-    <section className="pointer-events-auto w-[560px] overflow-hidden rounded-xl border border-line bg-surface shadow-focal">
+    <section className="pointer-events-auto w-[min(560px,92vw)] overflow-hidden rounded-xl border border-line bg-surface shadow-focal">
       <header className="flex items-center justify-between border-b border-line px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="label">Input</span>
